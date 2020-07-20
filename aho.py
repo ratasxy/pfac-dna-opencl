@@ -2,6 +2,9 @@ from __future__ import absolute_import, print_function
 import numpy as np
 import pyopencl as cl
 import pprint
+import glob, os
+from random import seed
+from random import randint
 
 class Aho:
     states_a = []
@@ -123,7 +126,6 @@ class Aho:
         res_np = np.empty_like(k_np)
         cl.enqueue_copy(queue, res_np, res_g)
 
-
     def getTests(self):
         return ["AAATCG",
                 "AATCGC",
@@ -136,16 +138,48 @@ class Aho:
         return [4.0, 5.0, 6.0, 8.0, 9.0]
 
 
+def randomstring(size=32):
+    di = ['A', 'C', 'G', 'T']
+    word = ''
+    for i in range(0,32):
+        word = word + di[randint(0, 3)]
+    return word
+
+def randomdataset(datasize=10, size=32):
+    dataset = []
+    for i in range(0, datasize):
+        dataset.append(randomstring(size))
+    return dataset
+
+def runTests(t):
+    z = 32
+    dataset_test = randomdataset(t, z)
+    dataset_pattern = randomdataset(t, z)
+    with open('./datasets/pattern-%i-%i.txt' % (t, z), 'w') as f:
+        for item in dataset_pattern:
+            f.write("%s\n" % item)
+    with open('./datasets/test-%i-%i.txt' % (t, z), 'w') as f:
+        for item in dataset_test:
+            f.write("%s\n" % item)
+
+def test():
+    sizes = [1000, 2000, 3000]
+
+    for test in sizes:
+        runTests(test)
+
+
+test()
 aho = Aho(13)
-aho.print()
-aho.insert("AAATCG")
-aho.insert("TACGCC")
-aho.insert("AAATTG")
-aho.print()
-print(aho.search("AAATCG"))
-print(aho.search("AATCGC"))
-print(aho.search("AAATCC"))
-print(aho.search("GAATCG"))
-print(aho.search("TACGCC"))
-print(aho.search("AAATTG"))
-aho.openclSearch()
+# aho.print()
+# aho.insert("AAATCG")
+# aho.insert("TACGCC")
+# aho.insert("AAATTG")
+# aho.print()
+# print(aho.search("AAATCG"))
+# print(aho.search("AATCGC"))
+# print(aho.search("AAATCC"))
+# print(aho.search("GAATCG"))
+# print(aho.search("TACGCC"))
+# print(aho.search("AAATTG"))
+# aho.openclSearch()
