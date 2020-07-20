@@ -5,6 +5,9 @@ import pprint
 import glob, os
 from random import seed
 from random import randint
+import time
+import tracemalloc
+
 
 class Aho:
     states_a = []
@@ -44,7 +47,6 @@ class Aho:
         self.indexed = self.indexed + 1
         self.used_states = self.used_states - 1
         self.states_b[previous_state][choice] = self.indexed
-        print ("Indexado")
 
     def search(self, word):
         current_state = 0
@@ -61,16 +63,13 @@ class Aho:
             return True
         return False
 
-    def openclSearch(self):
+    def openclSearch(self, dataset):
+        tracemalloc.start()
+
         a_np = np.array(self.states_a)
         b_np = np.array(self.states_b)
-        t_np = np.array(self.getTests())
+        t_np = np.array(dataset)
         k_np = np.random.rand(t_np.size)
-
-        pprint.pprint(a_np)
-        pprint.pprint(b_np)
-        pprint.pprint(t_np)
-        pprint.pprint(k_np)
 
         ctx = cl.create_some_context()
         queue = cl.CommandQueue(ctx)
@@ -120,22 +119,17 @@ class Aho:
             }
         """).build()
 
+        start_time = time.time()
         res_g = cl.Buffer(ctx, mf.WRITE_ONLY, k_np.nbytes)
         prg.search(queue, t_np.shape, None, np.int32(6), a_g, b_g, t_g, res_g)
 
         res_np = np.empty_like(k_np)
         cl.enqueue_copy(queue, res_np, res_g)
-
-    def getTests(self):
-        return ["AAATCG",
-                "AATCGC",
-                "AAATCC",
-                "GAATCG",
-                "TACGCC",
-                "AAATTG"]
-
-    def getTests2(self):
-        return [4.0, 5.0, 6.0, 8.0, 9.0]
+        end_time = time.time()
+        print("---Ejecutado en %s seconds ---" % (end_time - start_time))
+        current, peak = tracemalloc.get_traced_memory()
+        print(f"Uso de memoria actual {current / 10**6}MB; El pico fue {peak / 10**6}MB")
+        tracemalloc.stop()
 
 
 def randomstring(size=32):
@@ -152,7 +146,7 @@ def randomdataset(datasize=10, size=32):
     return dataset
 
 def runTests(t):
-    z = 32
+    z = 16
     dataset_test = randomdataset(t, z)
     dataset_pattern = randomdataset(t, z)
     with open('./datasets/pattern-%i-%i.txt' % (t, z), 'w') as f:
@@ -162,15 +156,24 @@ def runTests(t):
         for item in dataset_test:
             f.write("%s\n" % item)
 
+    stat = t*z*4
+    print ("Creando aho para %i con % estados" % (t, stat))
+    aho = Aho(t*z*4)
+    for word in dataset_pattern:
+        aho.insert(word)
+    print("busqueda")
+    aho.openclSearch(dataset_test)
+
+
+
 def test():
-    sizes = [1000, 2000, 3000]
+    sizes = [150000]
 
     for test in sizes:
         runTests(test)
 
 
 test()
-aho = Aho(13)
 # aho.print()
 # aho.insert("AAATCG")
 # aho.insert("TACGCC")
